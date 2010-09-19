@@ -17,11 +17,17 @@ Usage:
 
 **/
 
-function JSZip(compression)
+function JSZip(compression, content, mode)
 {
    // default : no compression
+   this.content = content || '';
+   this.mode = mode || 'w';
    this.compression = (compression || "STORE").toUpperCase();
    this.files = [];
+
+   if (mode == 'r' || mode == 'a') {
+      this._parseHeader();
+   }
 
    // Where we are in the hierarchy
    this.root = "";
@@ -34,9 +40,13 @@ function JSZip(compression)
       date: null
    };
 
-   if (!JSZip.compressions[this.compression]) {
+   if (!JSZip.compressions[this.compression].compress) {
       throw compression + " is not a valid compression method !";
    }
+}
+
+JSZip.prototype._parseHeader = function() {
+   
 }
 
 /**
@@ -111,7 +121,12 @@ JSZip.prototype.add = function(name, data, o)
 
    // file name
 
-   this.files[name] = {header: header, data: compressedData, dir: o.dir};
+   this.files[name] = {
+      header: header,
+      data: compressedData,
+      date: o.date,
+      dir: o.dir
+   };
 
    return this;
 };
@@ -286,6 +301,7 @@ JSZip.prototype.generate = function(asBytes)
  * name : {
  *    magic // the 2 bytes indentifying the compression method
  *    compress // function, take the uncompressed content and return it compressed.
+ *    decompress // function, visa-versa
  * }
  *
  * STORE is the default compression method, so it's included in this file.
@@ -296,11 +312,25 @@ JSZip.compressions = {
       magic : "\x00\x00",
       compress : function (content) {
          return content; // no compression
+      },
+      decompress : function (content) {
+         return content; // no decompression
       }
    }
 };
 
 // Utility functions
+
+JSZip.prototype.hexToDec = function(hex)
+{
+   var dec = 0;
+   var shift = 0;
+   for(var i=0;i<hex.length;i++) {
+      dec |= hex.charCodeAt(i) << shift;
+      shift += 8;
+   }
+   return dec;
+}
 
 JSZip.prototype.decToHex = function(dec, bytes)
 {
